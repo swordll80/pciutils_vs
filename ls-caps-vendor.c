@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 2014 Gerd Hoffmann <kraxel@redhat.com>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <stdio.h>
@@ -64,11 +62,11 @@ show_vendor_caps_virtio(struct device *d, int where, int cap)
 static int
 do_show_vendor_caps(struct device *d, int where, int cap)
 {
-  switch (d->dev->vendor_id)
+  switch (get_conf_word(d, PCI_VENDOR_ID))
     {
     case 0x1af4: /* Red Hat */
-      if (d->dev->device_id >= 0x1000 &&
-	  d->dev->device_id <= 0x107f)
+      if (get_conf_word(d, PCI_DEVICE_ID) >= 0x1000 &&
+	  get_conf_word(d, PCI_DEVICE_ID) <= 0x107f)
 	return show_vendor_caps_virtio(d, where, cap);
       break;
     }

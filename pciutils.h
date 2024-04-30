@@ -1,35 +1,18 @@
 /*
  *	The PCI Utilities -- Declarations
  *
- *	Copyright (c) 1997--2018 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 1997--2008 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include "lib/pci.h"
 #include "lib/sysdep.h"
-#include "bitops.h"
 
-/*
- * gcc predefines macro __MINGW32__ for all MinGW targets.
- * Including some MinGW header (e.g. windef.h) defines additional
- * macro __MINGW32_MAJOR_VERSION (available for all MinGW targets).
- */
-#if defined(PCI_OS_WINDOWS) && defined(__MINGW32__)
-#include <windef.h>
-#endif
-
-/*
- * On Windows only MinGW 3.0 and higher versions provides <getopt.h>
- * header file. Older MinGW versions and MSVC do not have it.
- * DJGPP does not provide <getopt.h>.
- */
-#if defined(PCI_OS_DJGPP) || (defined(PCI_OS_WINDOWS) && !(defined(__MINGW32_MAJOR_VERSION) && __MINGW32_MAJOR_VERSION >= 3))
+#ifdef PCI_OS_WINDOWS
 #include "compat/getopt.h"
 #else
-#include <getopt.h>
+#include <unistd.h>
 #endif
 
 #define PCIUTILS_VERSION PCILIB_VERSION
@@ -37,10 +20,10 @@
 extern const char program_name[];
 
 void die(char *msg, ...) NONRET PCI_PRINTF(1,2);
-void *xmalloc(size_t howmuch);
-void *xrealloc(void *ptr, size_t howmuch);
-char *xstrdup(const char *str);
-int parse_generic_option(int i, struct pci_access *pacc, char *arg);
+void *xmalloc(unsigned int howmuch);
+void *xrealloc(void *ptr, unsigned int howmuch);
+char *xstrdup(char *str);
+int parse_generic_option(int i, struct pci_access *pacc, char *optarg);
 
 #ifdef PCI_HAVE_PM_INTEL_CONF
 #define GENOPT_INTEL "H:"

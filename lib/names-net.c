@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 2007--2008 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <string.h>
@@ -16,14 +14,6 @@
 #include "names.h"
 
 #ifdef PCI_USE_DNS
-
-/*
- * Our definition of BYTE_ORDER confuses arpa/nameser_compat.h on
- * Solaris so we must undef it before including arpa/nameser.h.
- */
-#ifdef PCI_OS_SUNOS
-#undef BYTE_ORDER
-#endif
 
 #include <netinet/in.h>
 #include <arpa/nameser.h>
@@ -198,7 +188,7 @@ char
     default:
       return NULL;
     }
-  sprintf(dnsname, "%.100s.%.100s", name, domain);
+  sprintf(dnsname, "%s.%s", name, domain);
 
   a->debug("Resolving %s\n", dnsname);
   if (!resolver_inited)

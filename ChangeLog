@@ -1,368 +1,3 @@
-2024-04-05  Martin Mares <mj@ucw.cz>
-
-	* lspci decodes the IDE (Integrity & Data Encryption) and TEE-IO
-	  extended capabilities.
-
-	* Several bugs in back-ends for Windows were fixed and the
-	  README.Windows updated.
-
-	* Fixed building on Haiku.
-
-	* We now use more C99 features.
-
-	* Optimization flags used for compiling individual object files
-	  should be the same as optimization flags for linking the final
-	  executable to make link-time optimization possible.
-
-	* We no longer look up subsystems in the HWDB, because there is
-	  no API for querying only the subsystem. The lookup we used
-	  previously returned a device name if there was no entry for
-	  the particular subsystem.
-
-	* Updated pci.ids.
-
-2024-02-25  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.11.1.
-
-	* Fixed wrong API version in lib/pci.h.
-
-	* Updated README.Windows.
-
-	* Fix compilation on Windows.
-
-2024-02-24  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.11.0.
-
-	* update-pciids now supports XZ compression. If libpci is configured
-	  with support for compression, all downloaded files are recompressed
-	  as gzip. Otherwise they are stored as plain text.
-
-	* update-pciids now sends itself as the User-Agent.
-
-	* Added a pcilmr utility for PCIe lane margining. Thanks to Nikita
-	  Proshkin for contributing it.
-
-	* Re-factored access to i386 ports on all relevant platforms.
-
-	* Added i386 port access on OpenBSD.
-
-	* Back-ends for Windows received many bug fixes and improvements.
-
-	* ECAM back-end now scans ACPI and BIOS memory faster.
-
-	* Linux systems without pread/pwrite are no longer supported
-	  as they are hopefully long gone. This helps avoid the tricky check
-	  for presence of pread which was found to fail on musl libc.
-
-	* Improved decoding of PCIe control and status registers.
-
-	* Decoding of CXL capabilities now supports up to CXL 3.0.
-
-	* lspci now displays interrupt message numbers consistently across
-	  different capabilities.
-
-	* Cache of IDs resolved via DNS, which was located in ~/.pci-ids
-	  by default, is now stored according to the XDG base directory
-	  specification in $XDG_CACHE_HOME/pci-ids.
-
-	* All source files now have SPDX license identifiers.
-
-	* Internal: The "aux" fields of structs pci_access and pci_dev
-	  reserved for use by back-ends were renamed to backend_data to better
-	  reflect their meaning.
-
-	* As usually, various minor bug fixes and updated pci.ids.
-
-2023-05-01  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.10.0.
-
-	* Fixed bug in definition of versioned symbol aliases
-	  in shared libpci, which made compiling with link-time
-	  optimization fail.
-
-	* Filters now accept "0x..." syntax for backward compatibility.
-
-	* Windows: The cfgmgr32 back-end which provides the list of devices
-	  can be combined with another back-end which provides access
-	  to configuration space.
-
-	* ECAM (Enhanced Configuration Access Mechanism), which is defined
-	  by the PCIe standard, is now supported. It requires root privileges,
-	  access to physical memory, and also manual configuration on some
-	  systems.
-
-	* lspci: Tree view now works on multi-domain systems. It now respects
-	  filters properly.
-
-	* Last but not least, pci.ids were updated to the current snapshot
-	  of the database. This includes overall cleanup of entries with
-	  non-ASCII characters in their names -- such characters are allowed,
-	  but only if they convey interesting information (e.g., umlauts
-	  in German company names, but not the "registered trade mark" sign).
-
-2022-11-20  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.9.0.
-
-	* We decode Compute Express Link (CXL) capabilities.
-
-	* The tree mode of lspci is now compatible with filtering options.
-
-	* When setpci is used with a named register, it checks whether
-	  the register is present in the particular header type.
-
-	* Linux: The intel-conf[12] back-ends prefer to use ioperm() instead
-	  of iopl() to gain access to I/O ports.
-
-	* Windows: We have two new back-ends thanks to Pali Rohár.
-	  One uses the NT SysDbg interface, the other uses kldbgdrv.sys
-	  (which is a part of the Microsoft WinDbg tool).
-
-	* Windows: We support building libpci as a DLL. Also, Windows
-	  binaries now include meta-data with version.
-
-	* Hurd: The Hurd back-end works again.
-
-	* mmio-conf1(-ext): Added a new back-end implementing the intel-conf1
-	  interface over MMIO. This is useful on some ARM machines, but it
-	  requires manual configuration of the MMIO addresses.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2022-04-18  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.8.0.
-
-	* Filters can now match devices based on partially specified
-	  class code and also on the programming interface.
-
-	* Reporting of link speeds, power limits, and virtual function tags
-	  has been updated to the current PCIe specification.
-
-	* We decode the Data Object Exchange capability.
-
-	* Bus mapping mode works in non-zero domains.
-
-	* pci_fill_info() can fetch more fields: bridge bases, programming
-	  interface, revision, subsystem vendor and device ID, OS driver,
-	  and also parent bridge. Internally, the implementation was rewritten,
-	  significantly reducing the number of corner cases to be handled.
-
-	* The Windows port was revived and greatly improved by Pali Rohár.
-	  It requires less magic to compile. More importantly, it runs on both
-	  old and recent Windows systems (see README.Windows for details).
-
-	* Added a new Windows back-end using the cfgmgr32 interface.
-	  It does not provide direct access to the configuration space,
-	  but basic information about the device is reported via pci_fill_info().
-	  For back-ends of this type, we now provide an emulated read-only
-	  config space.
-
-	* If the configuration space is not readable for some reason
-	  (e.g., the cfgmgr32 back-end, but also badly implemented sleep mode
-	  of some devices), lspci prints only information provided by the OS.
-
-	* The Hurd back-end was greatly improved thanks to Joan Lledó.
-
-	* Various minor bug fixes and improvements.
-
-	* We officially require a working C99 compiler. Sorry, MSVC.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2020-05-31  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.7.0.
-
-	* Added or improved the following capabilities: Designated Vendor-Specific,
-	  Compute eXpress Link, Resizable BARs, VF Resizable BARs, Link
-	  Capabilities 2, Link Status 2.
-
-	* On Linux, lspci can show IOMMU groups.
-
-	* setpci can be asked to skip bus scan and operate on a device
-	  completely specified by its domain/bus/dev/func address. This
-	  involved major internal cleanup.
-
-	* The above feature of setpci uses the pci_get_dev() function,
-	  which obtains a struct pci_dev without doing a bus scan. This was
-	  always possible, but apparently little used, because back-ends
-	  frequently choked when operating on such devices. Fixed a lot
-	  of minor bugs related to this.
-
-	* Also, back-ends which do not support domains now correctly fail when
-	  trying to access devices outside domain 0.
-
-	* Semantics of pci_fill_info() and pci_dev->known_fields was underspecified,
-	  which lead to inconsistencies between back-ends. Improved documentation
-	  to give a more precise definition and updated all back-ends to conform
-	  to it. Most importantly, pci_dev->known_fields shows all fields requested
-	  over the lifetime of the pci_dev, but never those which are not supported
-	  by the back-end.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2020-01-25  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.6.4.
-
-	* A new back-end for the GNU Hurd was contributed by Joan Lledó.
-
-	* When printing VPD item identifiers, non-ASCII characters are escaped.
-
-2020-01-22  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.6.3.
-
-	* `lspci -t' (tree mode) can be combined with `-s' to show a sub-tree.
-	  We also fixed potential buffer overflows in the tree dumper.
-
-	* Cleaned messy code for dumping of I/O, memory, and ROM regions.
-	  This helped fixing a bug, which caused some 64-bit regions to be
-	  reported as virtual. All flags are now printed after the address
-	  (previously, "[virtual]" and "[enhanced]" were before it for no good
-	  reason).
-
-	* Added pci_find_cap_nr() to the library, which handles capabilities
-	  which occur multiple times in a single device.
-
-	* Minor improvements in printing of PCIe capabilities.
-
-	* We now decode the Multicast and Secondary PCI Express extended
-	  capabilities.
-
-	* The list of capability names available to setpci was updated.
-
-	* Minor bugs were fixed in FreeBSD and Solaris ports.
-
-	* We now prefer HTTPS URLs in all documentation
-
-	* The pci.ids file has a man page.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2018-08-12  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.6.2.
-
-	* Added "-P" and "-PP" switches to lspci, which display the path
-	  through bridges to each device.
-
-	* Fixed a couple of bugs in computation of bus topology. It was
-	  previously used only for the tree display, but we re-use it for
-	  computing the paths.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2018-07-12  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.6.1.
-
-	* Fixed compilation issues on Linux systems with MUSL libc.
-
-2018-06-30  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.6.0.
-
-	* BARs reported by the OS, but not set on the device itself are
-	  reliably marked with "[virtual]".
-
-	* Library: Introduced a generic mechanism of string properties. This
-	  avoids lots of special cases and makes ABI compatibility easier.
-
-	* On Linux systems with OpenFirmware, report corresponding device tree nodes
-	  as device properties.
-
-	* VPD decoder knows several non-standard extensions.
-
-	* When PCIe link speed is less than the maximum supported by the
-	  device, it is explicitly marked as "downgraded".
-
-	* Several new capabilities are not decoded yet, but at least their
-	  names are printed.
-
-	* The Null capability is easily decoded.
-
-	* Formatting of several capabilities was cleaned up.
-
-	* The VGA16 bit in the bridge control register is now supported.
-
-	* Added a port to SylixOS. Thanks to YuJian Gong for contribution.
-
-	* Added a port to DOS/DJGPP. Thanks to Rudolf Marek for contribution.
-
-	* The order in which back-ends are probed was decoupled from the
-	  internal back-end IDs. This helps, because new back-ends must have
-	  their ID allocated at the end to keep the ABI, but they might need
-	  to be probed earlier.
-
-	* The fbsd-device back-end should work again.
-
-	* Fixed a couple of bugs. Most notably, DeviceName was not printed.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2017-11-17  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.5.6.
-
-	* Improvements of the FreeBSD back-end: read-only access for non-root,
-	  support DragonFly BSD, support extended config space.
-
-	* MN VPD keyword is decoded correctly.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2017-07-05  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.5.5.
-
-	* Better decoding of AER capability.
-
-	* "Slot Implemented" flag is decoded for PCI/PCI-X to PCIe bridges.
-
-	* Minor fixes of decoding other capabilities.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2017-02-25  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.5.4.
-
-	* Previous version broke compilation on systems, for which lib/types.h
-	  did not provide a 64-bit integer type. It is provided everywhere now.
-
-2017-02-15  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.5.3.
-
-	* When lspci looks for Linux kernel modules, it uses the default
-	  path to module directory provided by libkmod. Previously,
-	  it tried to construct the path explicitly, which need not
-	  work on all systems.
-
-	* Improved formatting of memory and I/O ranges behind a bridge.
-
-	* PCIe link capabilities now display GEN4 speed (16GT/s).
-
-	* PCIe device capabilities now show bits related to atomic operations.
-	  Thanks to Satanand Burla for a patch.
-
-	* As usually, updated pci.ids to the current snapshot of the database.
-
-2016-10-03  Martin Mares <mj@ucw.cz>
-
-	* Released as 3.5.2.
-
-	* The L1 power management capability is now decoded more
-	  thoroughly. Thanks to Rajat Jain for the patch.
-
-	* The table of configuration registers used by setpci
-	  had a bug in the definition of SUBSYSTEM_VENDOR_ID.
-
 2016-05-22  Martin Mares <mj@ucw.cz>
 
 	* Released as 3.5.1.
@@ -938,7 +573,7 @@
 
 2007-08-31  Martin Mares <mj@ucw.cz>
 
-	* Makefile, lib/Makefile: `ar' and `ranlib' can be overridden to allow
+	* Makefile, lib/Makefile: `ar' and `ranlib' can be overriden to allow
 	cross-compilation.
 
 2007-08-27  Martin Mares  <mj@ucw.cz>
@@ -1512,7 +1147,7 @@
 	is not supported by all C libraries.
 
 	* Makefile: Always enter the lib directory (remember that we don't have
-	full dependencies for the library in the top-level Makefile; hmmm, another
+	full dependecies for the library in the top-level Makefile; hmmm, another
 	thing to rewrite some day).
 
 	* lib/sysfs.c: Added Linux sysfs access method based on the patch
@@ -2035,7 +1670,7 @@ Wed Jul  7 00:55:48 1999  Martin Mares  <mj@albireo.ucw.cz>
 
 	* lspci.c (show_msi): Added dumping of the MSI capability.
 	(show_slotid): The same for SlotID capability.
-	(show_caps): Separated capability dumping, because it should
+	(show_caps): Seperated capability dumping, because it should
 	be used for both htype0 and htype1. Even PCI 2.2 doesn't mention
 	layout of htype2, so I'm a bit unsure about it wrt capabilities
 	-- they at least have to live somewhere else since address 0x34
@@ -2150,7 +1785,7 @@ Thu Jan 28 20:54:16 1999  Martin Mares  <mj@albireo.ucw.cz>
 	is mainly guesswork based on DEC/Intel 21153 bridge specs
 	since I don't have the PCI Power Management document).
 
-	* lspci.c: Replaced numerous occurrences of (x & flag) ? '+' : '-'
+	* lspci.c: Replaced numerous occurences of (x & flag) ? '+' : '-'
 	by FLAG macro.
 
 	* lspci.c: Added bridge checks to bus mapping code.
@@ -2182,11 +1817,11 @@ Sun Jan 24 22:10:36 1999  Martin Mares  <mj@albireo.ucw.cz>
 	* lib/header.h: Until kernel adopts new layout of PCI
 	includes (i.e., separate declaration of header structure,
 	functions and device IDs), which is not going to happen
-	before 2.3, we'll use our own definition of the header.
+	before 2.3, we'll use our own definiton of the header.
 
 	* lspci.c (show_verbose): Display `Cap' flag in device status.
 
-	* lspci.c (show_htype0): Display capability lists wherever
+	* lspci.c (show_htype0): Display capability lists whereever
 	available. The only capability name we recognize now is `AGP'.
 	Unfortunately, capabilities are stored in device-dependent
 	portion of the configuration space and are thus available

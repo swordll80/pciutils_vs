@@ -7,14 +7,10 @@
  *	                   Thomas Schwinge <tschwinge@gnu.org>
  *	Copyright (c) 2007 Thomas Schwinge <tschwinge@gnu.org>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <sys/io.h>
-
-#include "i386-io-access.h"
 
 static inline int
 intel_setup_io(struct pci_access *a UNUSED)
@@ -22,16 +18,10 @@ intel_setup_io(struct pci_access *a UNUSED)
   return (ioperm (0, 65535, 1) == -1) ? 0 : 1;
 }
 
-static inline void
+static inline int
 intel_cleanup_io(struct pci_access *a UNUSED)
 {
   ioperm (0, 65535, 0);
-}
 
-static inline void intel_io_lock(void)
-{
-}
-
-static inline void intel_io_unlock(void)
-{
+  return -1;
 }

@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 2008--2009 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include "internal.h"
@@ -18,7 +16,6 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <pwd.h>
 #include <unistd.h>
 
@@ -26,75 +23,24 @@ static const char cache_version[] = "#PCI-CACHE-1.0";
 
 static char *get_cache_name(struct pci_access *a)
 {
-  if (!a->id_cache_name)
-    {
-      char *name = pci_get_param(a, "net.cache_name");
-      if (!name || !name[0])
-	return NULL;
+  char *name, *buf;
 
-      if (strncmp(name, "~/", 2))
-	a->id_cache_name = pci_strdup(a, name);
-      else
-	{
-	  uid_t uid = getuid();
-	  struct passwd *pw = getpwuid(uid);
-	  if (!pw)
-	    return name;
+  name = pci_get_param(a, "net.cache_name");
+  if (!name || !name[0])
+    return NULL;
+  if (strncmp(name, "~/", 2))
+    return name;
 
-	  a->id_cache_name = pci_malloc(a, strlen(pw->pw_dir) + strlen(name+1) + 1);
-	  sprintf(a->id_cache_name, "%s%s", pw->pw_dir, name+1);
-	}
-    }
+  uid_t uid = getuid();
+  struct passwd *pw = getpwuid(uid);
+  if (!pw)
+    return name;
 
-  return a->id_cache_name;
-}
-
-static void create_parent_dirs(struct pci_access *a, char *name)
-{
-  // Assumes that we have a private copy of the name we can modify
-
-  char *p = name + strlen(name);
-  while (p > name && *p != '/')
-    p--;
-  if (p == name)
-    return;
-
-  while (p > name)
-    {
-      // We stand at a slash. Check if the current prefix exists.
-      *p = 0;
-      struct stat st;
-      int res = stat(name, &st);
-      *p = '/';
-      if (res >= 0)
-	break;
-
-      // Does not exist yet, move up one directory
-      p--;
-      while (p > name && *p != '/')
-	p--;
-    }
-
-  // We now stand at the end of the longest existing prefix.
-  // Create all directories to the right of it.
-  for (;;)
-    {
-      p++;
-      while (*p && *p != '/')
-	p++;
-      if (!*p)
-	break;
-
-      *p = 0;
-      int res = mkdir(name, 0777);
-      if (res < 0)
-	{
-	  a->warning("Cannot create directory %s: %s", name, strerror(errno));
-	  *p = '/';
-	  break;
-	}
-      *p = '/';
-    }
+  buf = pci_malloc(a, strlen(pw->pw_dir) + strlen(name+1) + 1);
+  sprintf(buf, "%s%s", pw->pw_dir, name+1);
+  pci_set_param_internal(a, "net.cache_name", buf, 1);
+  pci_mfree(buf);
+  return pci_get_param(a, "net.cache_name");
 }
 
 int
@@ -105,15 +51,11 @@ pci_id_cache_load(struct pci_access *a, int flags)
   FILE *f;
   int lino;
 
-  if (a->id_cache_status > 0)
-    return 0;
   a->id_cache_status = 1;
-
   name = get_cache_name(a);
   if (!name)
     return 0;
   a->debug("Using cache %s\n", name);
-
   if (flags & PCI_LOOKUP_REFRESH_CACHE)
     {
       a->debug("Not loading cache, will refresh everything\n");
@@ -186,8 +128,6 @@ pci_id_cache_flush(struct pci_access *a)
   if (!name)
     return;
 
-  create_parent_dirs(a, name);
-
   this_pid = getpid();
   if (gethostname(hostname, sizeof(hostname)) < 0)
     hostname[0] = 0;
@@ -252,8 +192,6 @@ int pci_id_cache_load(struct pci_access *a UNUSED, int flags UNUSED)
 void pci_id_cache_flush(struct pci_access *a)
 {
   a->id_cache_status = 0;
-  pci_mfree(a->id_cache_name);
-  a->id_cache_name = NULL;
 }
 
 #endif

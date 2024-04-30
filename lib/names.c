@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 1997--2014 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <stdio.h>
@@ -33,7 +31,6 @@ static char *id_lookup(struct pci_access *a, int flags, int cat, int id1, int id
 	  if (name = pci_id_hwdb_lookup(a, cat, id1, id2, id3, id4))
 	    {
 	      pci_id_insert(a, cat, id1, id2, id3, id4, name, SRC_HWDB);
-	      pci_mfree(name);
 	      continue;
 	    }
 	}
@@ -143,7 +140,7 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
   if (flags & PCI_LOOKUP_MIXED)
     flags &= ~PCI_LOOKUP_NUMERIC;
 
-  if (!a->id_load_attempted && !(flags & (PCI_LOOKUP_NUMERIC | PCI_LOOKUP_SKIP_LOCAL)))
+  if (!a->id_hash && !(flags & (PCI_LOOKUP_NUMERIC | PCI_LOOKUP_SKIP_LOCAL)) && !a->id_load_failed)
     pci_load_name_list(a);
 
   switch (flags & 0xffff)
@@ -151,13 +148,11 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
     case PCI_LOOKUP_VENDOR:
       iv = va_arg(args, int);
       sprintf(numbuf, "%04x", iv);
-      va_end(args);
       return format_name(buf, size, flags, id_lookup(a, flags, ID_VENDOR, iv, 0, 0, 0), numbuf, "Vendor");
     case PCI_LOOKUP_DEVICE:
       iv = va_arg(args, int);
       id = va_arg(args, int);
       sprintf(numbuf, "%04x", id);
-      va_end(args);
       return format_name(buf, size, flags, id_lookup(a, flags, ID_DEVICE, iv, id, 0, 0), numbuf, "Device");
     case PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE:
       iv = va_arg(args, int);
@@ -165,13 +160,11 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
       sprintf(numbuf, "%04x:%04x", iv, id);
       v = id_lookup(a, flags, ID_VENDOR, iv, 0, 0, 0);
       d = id_lookup(a, flags, ID_DEVICE, iv, id, 0, 0);
-      va_end(args);
       return format_name_pair(buf, size, flags, v, d, numbuf);
     case PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_VENDOR:
       isv = va_arg(args, int);
       sprintf(numbuf, "%04x", isv);
       v = id_lookup(a, flags, ID_VENDOR, isv, 0, 0, 0);
-      va_end(args);
       return format_name(buf, size, flags, v, numbuf, "Unknown vendor");
     case PCI_LOOKUP_SUBSYSTEM | PCI_LOOKUP_DEVICE:
       iv = va_arg(args, int);
@@ -179,7 +172,6 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
       isv = va_arg(args, int);
       isd = va_arg(args, int);
       sprintf(numbuf, "%04x", isd);
-      va_end(args);
       return format_name(buf, size, flags, id_lookup_subsys(a, flags, iv, id, isv, isd), numbuf, "Device");
     case PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE | PCI_LOOKUP_SUBSYSTEM:
       iv = va_arg(args, int);
@@ -189,7 +181,6 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
       v = id_lookup(a, flags, ID_VENDOR, isv, 0, 0, 0);
       d = id_lookup_subsys(a, flags, iv, id, isv, isd);
       sprintf(numbuf, "%04x:%04x", isv, isd);
-      va_end(args);
       return format_name_pair(buf, size, flags, v, d, numbuf);
     case PCI_LOOKUP_CLASS:
       icls = va_arg(args, int);
@@ -200,7 +191,6 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
 	  if (!(flags & PCI_LOOKUP_NUMERIC)) /* Include full class number */
 	    flags |= PCI_LOOKUP_MIXED;
 	}
-      va_end(args);
       return format_name(buf, size, flags, cls, numbuf, "Class");
     case PCI_LOOKUP_PROGIF:
       icls = va_arg(args, int);
@@ -220,10 +210,8 @@ pci_lookup_name(struct pci_access *a, char *buf, int size, int flags, ...)
 	  if (*pif)
 	    pif++;
 	}
-      va_end(args);
       return format_name(buf, size, flags, pif, numbuf, "ProgIf");
     default:
-      va_end(args);
       return "<pci_lookup_name: invalid request>";
     }
 }

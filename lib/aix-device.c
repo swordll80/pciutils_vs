@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 1999 Jari Kirma <kirma@cs.hut.fi>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 /*
@@ -62,10 +60,9 @@ aix_find_bus(struct pci_access *a, int bus_number)
 }
 
 static int
-aix_bus_open(struct pci_dev *d)
+aix_bus_open(struct pci_access *a, int bus_number)
 {
-  struct pci_access *a = d->access;
-  aix_pci_bus *bp = aix_find_bus(a, d->bus);
+  aix_pci_bus *bp = aix_find_bus(a, bus_number);
 
   if (bp->bus_fd < 0)
     {
@@ -75,7 +72,9 @@ aix_bus_open(struct pci_dev *d)
       snprintf(devbuf, sizeof (devbuf), "/dev/%s", bp->bus_name);
       bp->bus_fd = open(devbuf, mode, 0);
       if (bp->bus_fd < 0)
-	a->error("aix_open_bus: %s open failed", devbuf);
+        {
+          a->error("aix_open_bus: %s open failed", devbuf);
+        }
     }
 
   return bp->bus_fd;
@@ -208,7 +207,7 @@ aix_scan(struct pci_access *a)
       bus_number = pci_buses[i].bus_number;
       if (!busmap[bus_number])
         {
-          pci_generic_scan_bus(a, busmap, 0, bus_number);
+          pci_generic_scan_bus(a, busmap, bus_number);
         }
     }
 }
@@ -219,10 +218,10 @@ aix_read(struct pci_dev *d, int pos, byte *buf, int len)
   struct mdio mdio;
   int fd;
 
-  if (d->domain || pos + len > 256)
+  if (pos + len > 256)
     return 0;
 
-  fd = aix_bus_open(d);
+  fd = aix_bus_open(d->access, d->bus);
   mdio.md_addr = (ulong) pos;
   mdio.md_size = len;
   mdio.md_incr = MV_BYTE;
@@ -241,10 +240,10 @@ aix_write(struct pci_dev *d, int pos, byte *buf, int len)
   struct mdio mdio;
   int fd;
 
-  if (d->domain || pos + len > 256)
+  if (pos + len > 256)
     return 0;
 
-  fd = aix_bus_open(d);
+  fd = aix_bus_open(d->access, d->bus);
   mdio.md_addr = (ulong) pos;
   mdio.md_size = len;
   mdio.md_incr = MV_BYTE;
@@ -260,13 +259,17 @@ aix_write(struct pci_dev *d, int pos, byte *buf, int len)
 }
 
 struct pci_methods pm_aix_device = {
-  .name = "aix-device",
-  .help = "AIX /dev/pci[0-n]",
-  .detect = aix_detect,
-  .init = aix_init,
-  .cleanup = aix_cleanup,
-  .scan = aix_scan,
-  .fill_info = pci_generic_fill_info,
-  .read = aix_read,
-  .write = aix_write,
+  "aix-device",
+  "AIX /dev/pci[0-n]",
+  NULL,
+  aix_detect,
+  aix_init,
+  aix_cleanup,
+  aix_scan,
+  pci_generic_fill_info,
+  aix_read,
+  aix_write,
+  NULL,                                 /* read_vpd */
+  NULL,                                 /* dev_init */
+  NULL                                  /* dev_cleanup */
 };

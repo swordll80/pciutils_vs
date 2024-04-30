@@ -1,11 +1,9 @@
 /*
  *	The PCI Library
  *
- *	Copyright (c) 1997--2024 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 1997--2016 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #ifndef _PCI_LIB_H
@@ -18,7 +16,7 @@
 #include "header.h"
 #include "types.h"
 
-#define PCI_LIB_VERSION 0x030c00
+#define PCI_LIB_VERSION 0x030501
 
 #ifndef PCI_ABI
 #define PCI_ABI
@@ -31,7 +29,7 @@
 struct pci_methods;
 
 enum pci_access_type {
-  /* Known access methods, remember to update init.c as well */
+  /* Known access methods, remember to update access.c as well */
   PCI_ACCESS_AUTO,			/* Autodetection */
   PCI_ACCESS_SYS_BUS_PCI,		/* Linux /sys/bus/pci */
   PCI_ACCESS_PROC_BUS_PCI,		/* Linux /proc/bus/pci */
@@ -43,15 +41,6 @@ enum pci_access_type {
   PCI_ACCESS_OBSD_DEVICE,		/* OpenBSD /dev/pci */
   PCI_ACCESS_DUMP,			/* Dump file */
   PCI_ACCESS_DARWIN,			/* Darwin */
-  PCI_ACCESS_SYLIXOS_DEVICE,		/* SylixOS pci */
-  PCI_ACCESS_HURD,			/* GNU/Hurd */
-  PCI_ACCESS_WIN32_CFGMGR32,		/* Win32 cfgmgr32.dll */
-  PCI_ACCESS_WIN32_KLDBG,		/* Win32 kldbgdrv.sys */
-  PCI_ACCESS_WIN32_SYSDBG,		/* Win32 NT SysDbg */
-  PCI_ACCESS_MMIO_TYPE1,		/* MMIO ports, type 1 */
-  PCI_ACCESS_MMIO_TYPE1_EXT,		/* MMIO ports, type 1 extended */
-  PCI_ACCESS_ECAM,			/* PCIe ECAM via /dev/mem */
-  PCI_ACCESS_AOS_EXPANSION,		/* AmigaOS Expansion library */
   PCI_ACCESS_MAX
 };
 
@@ -71,7 +60,7 @@ struct pci_access {
   int debugging;			/* Turn on debugging messages */
 
   /* Functions you can override: */
-  void (*error)(char *msg, ...) PCI_PRINTF(1,2) PCI_NONRET;	/* Write error message and quit */
+  void (*error)(char *msg, ...) PCI_PRINTF(1,2);	/* Write error message and quit */
   void (*warning)(char *msg, ...) PCI_PRINTF(1,2);	/* Write a warning message */
   void (*debug)(char *msg, ...) PCI_PRINTF(1,2);	/* Write a debugging message */
 
@@ -82,16 +71,15 @@ struct pci_access {
   struct pci_param *params;
   struct id_entry **id_hash;		/* names.c */
   struct id_bucket *current_id_bucket;
-  int id_load_attempted;
+  int id_load_failed;
   int id_cache_status;			/* 0=not read, 1=read, 2=dirty */
-  char *id_cache_name;
   struct udev *id_udev;			/* names-hwdb.c */
   struct udev_hwdb *id_udev_hwdb;
   int fd;				/* proc/sys: fd for config space */
   int fd_rw;				/* proc/sys: fd opened read-write */
+  int fd_pos;				/* proc/sys: current position */
   int fd_vpd;				/* sys: fd for VPD */
   struct pci_dev *cached_dev;		/* proc/sys: device the fds are for */
-  void *backend_data;			/* Private data of the back end */
 };
 
 /* Initialize PCI access */
@@ -136,7 +124,7 @@ struct pci_dev {
   u8 bus, dev, func;			/* Bus inside domain, device and function */
 
   /* These fields are set by pci_fill_info() */
-  unsigned int known_fields;		/* Set of info fields already known (see pci_fill_info()) */
+  int known_fields;			/* Set of info fields already known */
   u16 vendor_id, device_id;		/* Identity of the device */
   u16 device_class;			/* PCI device class */
   int irq;				/* IRQ number */
@@ -152,85 +140,46 @@ struct pci_dev {
   pciaddr_t flags[6];			/* PCI_IORESOURCE_* flags for regions */
   pciaddr_t rom_flags;			/* PCI_IORESOURCE_* flags for expansion ROM */
   int domain;				/* PCI domain (host bridge) */
-  pciaddr_t bridge_base_addr[4];	/* Bridge base addresses (without flags) */
-  pciaddr_t bridge_size[4];		/* Bridge sizes */
-  pciaddr_t bridge_flags[4];		/* PCI_IORESOURCE_* flags for bridge addresses */
-  u8 prog_if, rev_id;			/* Programming interface for device_class and revision id */
-  u16 subsys_vendor_id, subsys_id;	/* Subsystem vendor id and subsystem id */
-  struct pci_dev *parent;		/* Parent device, does not have to be always accessible */
-  int no_config_access;			/* No access to config space for this device */
 
-  /* Fields used internally */
+  /* Fields used internally: */
   struct pci_access *access;
   struct pci_methods *methods;
   u8 *cache;				/* Cached config registers */
   int cache_len;
   int hdrtype;				/* Cached low 7 bits of header type, -1 if unknown */
-  void *backend_data;			/* Private data for of the back end */
-  struct pci_property *properties;	/* A linked list of extra properties */
-  struct pci_cap *last_cap;		/* Last capability in the list */
+  void *aux;				/* Auxillary data */
 };
 
 #define PCI_ADDR_IO_MASK (~(pciaddr_t) 0x3)
 #define PCI_ADDR_MEM_MASK (~(pciaddr_t) 0xf)
 #define PCI_ADDR_FLAG_MASK 0xf
 
-/* Access to configuration space */
-u8 pci_read_byte(struct pci_dev *, int pos) PCI_ABI;
+u8 pci_read_byte(struct pci_dev *, int pos) PCI_ABI; /* Access to configuration space */
 u16 pci_read_word(struct pci_dev *, int pos) PCI_ABI;
 u32 pci_read_long(struct pci_dev *, int pos) PCI_ABI;
+int pci_read_block(struct pci_dev *, int pos, u8 *buf, int len) PCI_ABI;
 int pci_read_vpd(struct pci_dev *d, int pos, u8 *buf, int len) PCI_ABI;
 int pci_write_byte(struct pci_dev *, int pos, u8 data) PCI_ABI;
 int pci_write_word(struct pci_dev *, int pos, u16 data) PCI_ABI;
 int pci_write_long(struct pci_dev *, int pos, u32 data) PCI_ABI;
-
-/* Configuration space as a sequence of bytes (little-endian) */
-int pci_read_block(struct pci_dev *, int pos, u8 *buf, int len) PCI_ABI;
 int pci_write_block(struct pci_dev *, int pos, u8 *buf, int len) PCI_ABI;
 
-/*
- * Most device properties take some effort to obtain, so libpci does not
- * initialize them during default bus scan. Instead, you have to call
- * pci_fill_info() with the proper PCI_FILL_xxx constants OR'ed together.
- *
- * Some properties are stored directly in the pci_dev structure.
- * The remaining ones can be accessed through pci_get_string_property().
- *
- * pci_fill_info() returns the current value of pci_dev->known_fields.
- * This is a bit mask of all fields, which were already obtained during
- * the lifetime of the device. This includes fields which are not supported
- * by the particular device -- in that case, the field is left at its default
- * value, which is 0 for integer fields and NULL for pointers. On the other
- * hand, we never consider known fields unsupported by the current back-end;
- * such fields always contain the default value.
- *
- * XXX: flags and the result should be unsigned, but we do not want to break the ABI.
- */
+int pci_fill_info(struct pci_dev *, int flags) PCI_ABI; /* Fill in device information */
 
-int pci_fill_info(struct pci_dev *, int flags) PCI_ABI;
-char *pci_get_string_property(struct pci_dev *d, u32 prop) PCI_ABI;
-
-#define PCI_FILL_IDENT		0x0001		/* vendor and device ID */
+#define PCI_FILL_IDENT		0x0001
 #define PCI_FILL_IRQ		0x0002
 #define PCI_FILL_BASES		0x0004
 #define PCI_FILL_ROM_BASE	0x0008
 #define PCI_FILL_SIZES		0x0010
 #define PCI_FILL_CLASS		0x0020
-#define PCI_FILL_CAPS		0x0040		/* capabilities */
-#define PCI_FILL_EXT_CAPS	0x0080		/* extended capabilities */
-#define PCI_FILL_PHYS_SLOT	0x0100		/* physical slot (string property) */
-#define PCI_FILL_MODULE_ALIAS	0x0200		/* Linux kernel module alias (string property) */
-#define PCI_FILL_LABEL		0x0400		/* (string property) */
+#define PCI_FILL_CAPS		0x0040
+#define PCI_FILL_EXT_CAPS	0x0080
+#define PCI_FILL_PHYS_SLOT	0x0100
+#define PCI_FILL_MODULE_ALIAS	0x0200
+#define PCI_FILL_LABEL		0x0400
 #define PCI_FILL_NUMA_NODE	0x0800
 #define PCI_FILL_IO_FLAGS	0x1000
-#define PCI_FILL_DT_NODE	0x2000		/* Device tree node (string property) */
-#define PCI_FILL_IOMMU_GROUP	0x4000		/* (string property) */
-#define PCI_FILL_BRIDGE_BASES	0x8000
-#define PCI_FILL_RESCAN		0x00010000	/* force re-scan of cached properties */
-#define PCI_FILL_CLASS_EXT	0x00020000      /* prog_if and rev_id */
-#define PCI_FILL_SUBSYS		0x00040000      /* subsys_vendor_id and subsys_id */
-#define PCI_FILL_PARENT		0x00080000
-#define PCI_FILL_DRIVER		0x00100000      /* OS driver currently in use (string property) */
+#define PCI_FILL_RESCAN		0x00010000
 
 void pci_setup_cache(struct pci_dev *, u8 *cache, int len) PCI_ABI;
 
@@ -249,8 +198,6 @@ struct pci_cap {
 #define PCI_CAP_EXTENDED	2	/* PCIe extended capabilities */
 
 struct pci_cap *pci_find_cap(struct pci_dev *, unsigned int id, unsigned int type) PCI_ABI;
-struct pci_cap *pci_find_cap_nr(struct pci_dev *, unsigned int id, unsigned int type,
-                                unsigned int *cap_number) PCI_ABI;
 
 /*
  *	Filters
@@ -258,11 +205,8 @@ struct pci_cap *pci_find_cap_nr(struct pci_dev *, unsigned int id, unsigned int 
 
 struct pci_filter {
   int domain, bus, slot, func;			/* -1 = ANY */
-  int vendor, device;
-  int device_class;
-  unsigned int device_class_mask;		/* Which bits of the device_class are compared, default=all */
-  int prog_if;
-  int rfu[1];
+  int vendor, device, device_class;
+  int rfu[3];
 };
 
 void pci_filter_init(struct pci_access *, struct pci_filter *) PCI_ABI;

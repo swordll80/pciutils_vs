@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 1997--2008 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <stdio.h>
@@ -54,14 +52,13 @@ map_bridge(struct bus_info *bi, struct device *d, int np, int ns, int nl)
 static void
 do_map_bus(int bus)
 {
-  int domain = (filter.domain >= 0 ? filter.domain : 0);
   int dev, func;
   int verbose = pacc->debugging;
   struct bus_info *bi = bus_info + bus;
   struct device *d;
 
   if (verbose)
-    printf("Mapping bus %04x:%02x\n", domain, bus);
+    printf("Mapping bus %02x\n", bus);
   for (dev = 0; dev < 32; dev++)
     if (filter.slot < 0 || filter.slot == dev)
       {
@@ -69,14 +66,15 @@ do_map_bus(int bus)
 	for (func = 0; func < func_limit; func++)
 	  if (filter.func < 0 || filter.func == func)
 	    {
-	      struct pci_dev *p = pci_get_dev(pacc, domain, bus, dev, func);
+	      /* XXX: Bus mapping supports only domain 0 */
+	      struct pci_dev *p = pci_get_dev(pacc, 0, bus, dev, func);
 	      u16 vendor = pci_read_word(p, PCI_VENDOR_ID);
 	      if (vendor && vendor != 0xffff)
 		{
 		  if (!func && (pci_read_byte(p, PCI_HEADER_TYPE) & 0x80))
 		    func_limit = 8;
 		  if (verbose)
-		    printf("Discovered device %04x:%02x:%02x.%d\n", domain, bus, dev, func);
+		    printf("Discovered device %02x:%02x.%d\n", bus, dev, func);
 		  bi->exists = 1;
 		  if (d = scan_device(p))
 		    {
@@ -167,7 +165,6 @@ map_the_bus(void)
 {
   if (pacc->method == PCI_ACCESS_PROC_BUS_PCI ||
       pacc->method == PCI_ACCESS_SYS_BUS_PCI ||
-      pacc->method == PCI_ACCESS_WIN32_CFGMGR32 ||
       pacc->method == PCI_ACCESS_DUMP)
     printf("WARNING: Bus mapping can be reliable only with direct hardware access enabled.\n\n");
   bus_info = xmalloc(sizeof(struct bus_info) * 256);

@@ -1,11 +1,9 @@
 /*
  *	The PCI Library -- Generic Direct Access Functions
  *
- *	Copyright (c) 1997--2022 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 1997--2000 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <string.h>
@@ -13,7 +11,7 @@
 #include "internal.h"
 
 void
-pci_generic_scan_bus(struct pci_access *a, byte *busmap, int domain, int bus)
+pci_generic_scan_bus(struct pci_access *a, byte *busmap, int bus)
 {
   int dev, multi, ht;
   struct pci_dev *t;
@@ -26,7 +24,6 @@ pci_generic_scan_bus(struct pci_access *a, byte *busmap, int domain, int bus)
     }
   busmap[bus] = 1;
   t = pci_alloc_dev(a);
-  t->domain = domain;
   t->bus = bus;
   for (dev=0; dev<32; dev++)
     {
@@ -44,7 +41,6 @@ pci_generic_scan_bus(struct pci_access *a, byte *busmap, int domain, int bus)
 	    multi = ht & 0x80;
 	  ht &= 0x7f;
 	  d = pci_alloc_dev(a);
-	  d->domain = t->domain;
 	  d->bus = t->bus;
 	  d->dev = t->dev;
 	  d->func = t->func;
@@ -59,7 +55,7 @@ pci_generic_scan_bus(struct pci_access *a, byte *busmap, int domain, int bus)
 	      break;
 	    case PCI_HEADER_TYPE_BRIDGE:
 	    case PCI_HEADER_TYPE_CARDBUS:
-	      pci_generic_scan_bus(a, busmap, domain, pci_read_byte(t, PCI_SECONDARY_BUS));
+	      pci_generic_scan_bus(a, busmap, pci_read_byte(t, PCI_SECONDARY_BUS));
 	      break;
 	    default:
 	      a->debug("Device %04x:%02x:%02x.%d has unknown header type %02x.\n", d->domain, d->bus, d->dev, d->func, ht);
@@ -70,82 +66,35 @@ pci_generic_scan_bus(struct pci_access *a, byte *busmap, int domain, int bus)
 }
 
 void
-pci_generic_scan_domain(struct pci_access *a, int domain)
+pci_generic_scan(struct pci_access *a)
 {
   byte busmap[256];
 
   memset(busmap, 0, sizeof(busmap));
-  pci_generic_scan_bus(a, busmap, domain, 0);
+  pci_generic_scan_bus(a, busmap, 0);
 }
 
-void
-pci_generic_scan(struct pci_access *a)
-{
-  pci_generic_scan_domain(a, 0);
-}
-
-static int
-get_hdr_type(struct pci_dev *d)
-{
-  if (d->hdrtype < 0)
-    d->hdrtype = pci_read_byte(d, PCI_HEADER_TYPE) & 0x7f;
-  return d->hdrtype;
-}
-
-void
-pci_generic_fill_info(struct pci_dev *d, unsigned int flags)
+int
+pci_generic_fill_info(struct pci_dev *d, int flags)
 {
   struct pci_access *a = d->access;
-  struct pci_cap *cap;
 
-  if (want_fill(d, flags, PCI_FILL_IDENT))
+  if ((flags & (PCI_FILL_BASES | PCI_FILL_ROM_BASE)) && d->hdrtype < 0)
+    d->hdrtype = pci_read_byte(d, PCI_HEADER_TYPE) & 0x7f;
+  if (flags & PCI_FILL_IDENT)
     {
       d->vendor_id = pci_read_word(d, PCI_VENDOR_ID);
       d->device_id = pci_read_word(d, PCI_DEVICE_ID);
     }
-
-  if (want_fill(d, flags, PCI_FILL_CLASS))
-    d->device_class = pci_read_word(d, PCI_CLASS_DEVICE);
-
-  if (want_fill(d, flags, PCI_FILL_CLASS_EXT))
-    {
-      d->prog_if = pci_read_byte(d, PCI_CLASS_PROG);
-      d->rev_id = pci_read_byte(d, PCI_REVISION_ID);
-    }
-
-  if (want_fill(d, flags, PCI_FILL_SUBSYS))
-    {
-      switch (get_hdr_type(d))
-        {
-        case PCI_HEADER_TYPE_NORMAL:
-          d->subsys_vendor_id = pci_read_word(d, PCI_SUBSYSTEM_VENDOR_ID);
-          d->subsys_id = pci_read_word(d, PCI_SUBSYSTEM_ID);
-          break;
-        case PCI_HEADER_TYPE_BRIDGE:
-          cap = pci_find_cap(d, PCI_CAP_ID_SSVID, PCI_CAP_NORMAL);
-          if (cap)
-            {
-              d->subsys_vendor_id = pci_read_word(d, cap->addr + PCI_SSVID_VENDOR);
-              d->subsys_id = pci_read_word(d, cap->addr + PCI_SSVID_DEVICE);
-            }
-          break;
-        case PCI_HEADER_TYPE_CARDBUS:
-          d->subsys_vendor_id = pci_read_word(d, PCI_CB_SUBSYSTEM_VENDOR_ID);
-          d->subsys_id = pci_read_word(d, PCI_CB_SUBSYSTEM_ID);
-          break;
-        default:
-          clear_fill(d, PCI_FILL_SUBSYS);
-        }
-    }
-
-  if (want_fill(d, flags, PCI_FILL_IRQ))
+  if (flags & PCI_FILL_CLASS)
+      d->device_class = pci_read_word(d, PCI_CLASS_DEVICE);
+  if (flags & PCI_FILL_IRQ)
     d->irq = pci_read_byte(d, PCI_INTERRUPT_LINE);
-
-  if (want_fill(d, flags, PCI_FILL_BASES))
+  if (flags & PCI_FILL_BASES)
     {
       int cnt = 0, i;
       memset(d->base_addr, 0, sizeof(d->base_addr));
-      switch (get_hdr_type(d))
+      switch (d->hdrtype)
 	{
 	case PCI_HEADER_TYPE_NORMAL:
 	  cnt = 6;
@@ -188,12 +137,11 @@ pci_generic_fill_info(struct pci_dev *d, unsigned int flags)
 	    }
 	}
     }
-
-  if (want_fill(d, flags, PCI_FILL_ROM_BASE))
+  if (flags & PCI_FILL_ROM_BASE)
     {
       int reg = 0;
       d->rom_base_addr = 0;
-      switch (get_hdr_type(d))
+      switch (d->hdrtype)
 	{
 	case PCI_HEADER_TYPE_NORMAL:
 	  reg = PCI_ROM_ADDRESS;
@@ -209,8 +157,9 @@ pci_generic_fill_info(struct pci_dev *d, unsigned int flags)
 	    d->rom_base_addr = u;
 	}
     }
-
-  pci_scan_caps(d, flags);
+  if (flags & (PCI_FILL_CAPS | PCI_FILL_EXT_CAPS))
+    flags |= pci_scan_caps(d, flags);
+  return flags & ~PCI_FILL_SIZES;
 }
 
 static int

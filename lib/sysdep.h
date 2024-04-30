@@ -1,21 +1,17 @@
 /*
  *	The PCI Library -- System-Dependent Stuff
  *
- *	Copyright (c) 1997--2020 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 1997--2004 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #ifdef __GNUC__
 #define UNUSED __attribute__((unused))
 #define NONRET __attribute__((noreturn))
-#define FORMAT_CHECK(x,y,z) __attribute__((format(x,y,z)))
 #else
 #define UNUSED
 #define NONRET
-#define FORMAT_CHECK(x,y,z)
 #define inline
 #endif
 
@@ -23,19 +19,7 @@ typedef u8 byte;
 typedef u16 word;
 
 #ifdef PCI_OS_WINDOWS
-#define strcasecmp _strcmpi
-#define strncasecmp _strnicmp
-#if defined(_MSC_VER) && _MSC_VER < 1800
-#if _MSC_VER < 1300
-#define strtoull strtoul
-#else
-#define strtoull _strtoui64
-#endif
-#endif
-#if defined(_MSC_VER) && _MSC_VER < 1900
-#define snprintf _snprintf
-#define vsnprintf _vsnprintf
-#endif
+#define strcasecmp strcmpi
 #endif
 
 #ifdef PCI_HAVE_LINUX_BYTEORDER_H
@@ -80,29 +64,8 @@ typedef u16 word;
   #define BIG_ENDIAN 4321
   #define LITTLE_ENDIAN	1234
   #define BYTE_ORDER LITTLE_ENDIAN
+  #define snprintf _snprintf
 #endif
-#endif
-
-#ifdef PCI_OS_HAIKU
-#include <endian.h>
-#endif
-
-#ifdef PCI_OS_SYLIXOS
-#include <endian.h>
-#endif
-
-#ifdef PCI_OS_DJGPP
-  #define BIG_ENDIAN 4321
-  #define LITTLE_ENDIAN	1234
-  #define BYTE_ORDER LITTLE_ENDIAN
-#endif
-
-#ifdef PCI_OS_AMIGAOS
-  #include <machine/endian.h>
-#endif
-
-#if !defined(BYTE_ORDER)
-#error "BYTE_ORDER not defined for your platform"
 #endif
 
 #if BYTE_ORDER == BIG_ENDIAN

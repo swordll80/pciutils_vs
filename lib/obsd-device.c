@@ -3,9 +3,7 @@
  *
  *	Adapted from fbsd-device.c by Matthieu Herrb <matthieu.herrb@laas.fr>, 2006
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <fcntl.h>
@@ -67,7 +65,7 @@ obsd_read(struct pci_dev *d, int pos, byte *buf, int len)
   if (!(len == 1 || len == 2 || len == 4))
     return pci_generic_block_read(d, pos, buf, len);
 
-  if (d->domain || pos >= 256)
+  if (pos >= 256)
     return 0;
 
   pi.pi_sel.pc_bus = d->bus;
@@ -108,7 +106,7 @@ obsd_write(struct pci_dev *d, int pos, byte *buf, int len)
   if (!(len == 1 || len == 2 || len == 4))
     return pci_generic_block_write(d, pos, buf, len);
 
-  if (d->domain || pos >= 256)
+  if (pos >= 256)
     return 0;
 
   pi.pi_sel.pc_bus = d->bus;
@@ -138,14 +136,17 @@ obsd_write(struct pci_dev *d, int pos, byte *buf, int len)
 }
 
 struct pci_methods pm_obsd_device = {
-  .name = "obsd-device",
-  .help = "/dev/pci on OpenBSD",
-  .config = obsd_config,
-  .detect = obsd_detect,
-  .init = obsd_init,
-  .cleanup = obsd_cleanup,
-  .scan = pci_generic_scan,
-  .fill_info = pci_generic_fill_info,
-  .read = obsd_read,
-  .write = obsd_write,
+  "obsd-device",
+  "/dev/pci on OpenBSD",
+  obsd_config,
+  obsd_detect,
+  obsd_init,
+  obsd_cleanup,
+  pci_generic_scan,
+  pci_generic_fill_info,
+  obsd_read,
+  obsd_write,
+  NULL,                                 /* read_vpd */
+  NULL,                                 /* dev_init */
+  NULL                                  /* dev_cleanup */
 };

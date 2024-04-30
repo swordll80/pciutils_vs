@@ -3,9 +3,7 @@
  *
  *	Copyright (c) 1997--2008 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <stdio.h>
@@ -44,7 +42,7 @@ static pci_file pci_open(struct pci_access *a)
 #define pci_close(f)		gzclose(f)
 #define PCI_ERROR(f, err)						\
 	if (!err) {							\
-		int errnum = 0;						\
+		int errnum;						\
 		gzerror(f, &errnum);					\
 		if (errnum >= 0) err = NULL;				\
 		else if (errnum == Z_ERRNO) err = "I/O error";		\
@@ -223,7 +221,7 @@ pci_load_name_list(struct pci_access *a)
   const char *err;
 
   pci_free_name_list(a);
-  a->id_load_attempted = 1;
+  a->id_load_failed = 1;
   if (!(f = pci_open(a)))
     return 0;
   err = id_parse_list(a, f, &lino);
@@ -231,6 +229,7 @@ pci_load_name_list(struct pci_access *a)
   pci_close(f);
   if (err)
     a->error("%s at %s, line %d\n", err, a->id_file_name, lino);
+  a->id_load_failed = 0;
   return 1;
 }
 
@@ -240,7 +239,7 @@ pci_free_name_list(struct pci_access *a)
   pci_id_cache_flush(a);
   pci_id_hash_free(a);
   pci_id_hwdb_free(a);
-  a->id_load_attempted = 0;
+  a->id_load_failed = 0;
 }
 
 void

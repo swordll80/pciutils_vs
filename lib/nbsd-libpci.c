@@ -6,9 +6,7 @@
  *      Copyright (c) 2002 Quentin Garnier <cube@cubidou.net>
  *	Copyright (c) 2002 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 /*
@@ -73,7 +71,7 @@ nbsd_read(struct pci_dev *d, int pos, byte *buf, int len)
   if (!(len == 1 || len == 2 || len == 4))
     return pci_generic_block_read(d, pos, buf, len);
 
-  if (d->domain || pos >= 4096)
+  if (pos >= 4096)
     return 0;
 
   shift = 8*(pos % 4);
@@ -106,7 +104,7 @@ nbsd_write(struct pci_dev *d, int pos, byte *buf, int len)
   if (!(len == 1 || len == 2 || len == 4))
     return pci_generic_block_write(d, pos, buf, len);
 
-  if (d->domain || pos >= 256)
+  if (pos >= 256)
     return 0;
 
   /*
@@ -143,14 +141,17 @@ nbsd_write(struct pci_dev *d, int pos, byte *buf, int len)
 }
 
 struct pci_methods pm_nbsd_libpci = {
-  .name = "nbsd-libpci",
-  .help = "NetBSD libpci",
-  .config = nbsd_config,
-  .detect = nbsd_detect,
-  .init = nbsd_init,
-  .cleanup = nbsd_cleanup,
-  .scan = pci_generic_scan,
-  .fill_info = pci_generic_fill_info,
-  .read = nbsd_read,
-  .write = nbsd_write,
+  "nbsd-libpci",
+  "NetBSD libpci",
+  nbsd_config,
+  nbsd_detect,
+  nbsd_init,
+  nbsd_cleanup,
+  pci_generic_scan,
+  pci_generic_fill_info,
+  nbsd_read,
+  nbsd_write,
+  NULL,                                 /* read_vpd */
+  NULL,                                 /* dev_init */
+  NULL                                  /* dev_cleanup */
 };

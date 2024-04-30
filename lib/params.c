@@ -1,11 +1,9 @@
 /*
  *	The PCI Library -- Parameters
  *
- *	Copyright (c) 2008--2023 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 2008 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #include <stdio.h>
@@ -25,32 +23,17 @@ pci_get_param(struct pci_access *acc, char *param)
   return NULL;
 }
 
-struct pci_param *
+void
 pci_define_param(struct pci_access *acc, char *param, char *value, char *help)
 {
-  struct pci_param *p, **pp;
+  struct pci_param *p = pci_malloc(acc, sizeof(*p));
 
-  for (pp=&acc->params; p = *pp; pp=&p->next)
-    {
-      int cmp = strcmp(p->param, param);
-      if (!cmp)
-	{
-	  if (strcmp(p->value, value) || strcmp(p->help, help))
-	    acc->error("Parameter %s re-defined differently", param);
-	  return p;
-	}
-      if (cmp > 0)
-	break;
-    }
-
-  p = pci_malloc(acc, sizeof(*p));
-  p->next = *pp;
-  *pp = p;
+  p->next = acc->params;
+  acc->params = p;
   p->param = param;
   p->value = value;
   p->value_malloced = 0;
   p->help = help;
-  return p;
 }
 
 int

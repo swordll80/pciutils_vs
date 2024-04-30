@@ -1,11 +1,9 @@
 /*
  *	The PCI Library -- Configuration Access via /proc/bus/pci
  *
- *	Copyright (c) 1997--2023 Martin Mares <mj@ucw.cz>
+ *	Copyright (c) 1997--2003 Martin Mares <mj@ucw.cz>
  *
- *	Can be freely distributed and used under the terms of the GNU GPL v2+.
- *
- *	SPDX-License-Identifier: GPL-2.0-or-later
+ *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #define _GNU_SOURCE
@@ -13,12 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
 
 #include "internal.h"
+#include "pread.h"
 
 static void
 proc_config(struct pci_access *a)
@@ -71,11 +69,9 @@ proc_scan(struct pci_access *a)
     {
       struct pci_dev *d = pci_alloc_dev(a);
       unsigned int dfn, vend, cnt, known;
-      char *driver;
-      int offset;
 
 #define F " " PCIADDR_T_FMT
-      cnt = sscanf(buf, "%x %x %x" F F F F F F F F F F F F F F "%n",
+      cnt = sscanf(buf, "%x %x %x" F F F F F F F F F F F F F F,
 	     &dfn,
 	     &vend,
 	     &d->irq,
@@ -92,8 +88,7 @@ proc_scan(struct pci_access *a)
 	     &d->size[3],
 	     &d->size[4],
 	     &d->size[5],
-	     &d->rom_size,
-	     &offset);
+	     &d->rom_size);
 #undef F
       if (cnt != 9 && cnt != 10 && cnt != 17)
 	a->error("proc: parse error (read only %d items)", cnt);
@@ -111,20 +106,6 @@ proc_scan(struct pci_access *a)
 	  if (cnt >= 17)
 	    known |= PCI_FILL_SIZES;
 	}
-      if (cnt >= 17)
-        {
-          while (buf[offset] && isspace(buf[offset]))
-            ++offset;
-          driver = &buf[offset];
-          while (buf[offset] && !isspace(buf[offset]))
-            ++offset;
-          buf[offset] = '\0';
-          if (driver[0])
-            {
-              pci_set_property(d, PCI_FILL_DRIVER, driver);
-              known |= PCI_FILL_DRIVER;
-            }
-        }
       d->known_fields = known;
       pci_link_dev(a, d);
     }
@@ -161,6 +142,7 @@ proc_setup(struct pci_dev *d, int rw)
       if (a->fd < 0)
 	a->warning("Cannot open %s", buf);
       a->cached_dev = d;
+      a->fd_pos = 0;
     }
   return a->fd;
 }
@@ -173,7 +155,7 @@ proc_read(struct pci_dev *d, int pos, byte *buf, int len)
 
   if (fd < 0)
     return 0;
-  res = pread(fd, buf, len, pos);
+  res = do_read(d, fd, buf, len, pos);
   if (res < 0)
     {
       d->access->warning("proc_read: read failed: %s", strerror(errno));
@@ -192,7 +174,7 @@ proc_write(struct pci_dev *d, int pos, byte *buf, int len)
 
   if (fd < 0)
     return 0;
-  res = pwrite(fd, buf, len, pos);
+  res = do_write(d, fd, buf, len, pos);
   if (res < 0)
     {
       d->access->warning("proc_write: write failed: %s", strerror(errno));
@@ -214,15 +196,17 @@ proc_cleanup_dev(struct pci_dev *d)
 }
 
 struct pci_methods pm_linux_proc = {
-  .name = "linux-proc",
-  .help = "The proc file system on Linux",
-  .config = proc_config,
-  .detect = proc_detect,
-  .init = proc_init,
-  .cleanup = proc_cleanup,
-  .scan = proc_scan,
-  .fill_info = pci_generic_fill_info,
-  .read = proc_read,
-  .write = proc_write,
-  .cleanup_dev = proc_cleanup_dev,
+  "linux-proc",
+  "The proc file system on Linux",
+  proc_config,
+  proc_detect,
+  proc_init,
+  proc_cleanup,
+  proc_scan,
+  pci_generic_fill_info,
+  proc_read,
+  proc_write,
+  NULL,					/* read_vpd */
+  NULL,					/* init_dev */
+  proc_cleanup_dev
 };
